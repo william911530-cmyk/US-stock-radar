@@ -32,10 +32,9 @@ jobs:
           git config user.name "WallStreet-Bot"
           git config user.email "bot@wallstreet.com"
           
-          # 先打包新生成的 JSON 檔案
-          git add top20_us.json
-          git commit -m "📊 Fix: WallStreet Data Stream Sync" || echo "資料無變動"
+          # 🚀 核心修正：用 *.json 強迫 Git 把這三個剛出爐的 JSON 檔案全部裝箱！
+          git add *.json
+          git commit -m "📊 Fix: Push all market data streams" || echo "資料無變動"
           
-          # 桌子乾淨了，再拉取同步，徹底防衝突
           git pull --rebase origin main
           git push origin HEAD:main
