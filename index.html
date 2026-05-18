@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QUANTUM US // INSTITUTIONAL RADAR TERMINAL</title>
+    <title>QUANTUM US // TOTAL MARKET TERMINAL</title>
     <style>
         :root {
             --bg-main: #050811;
@@ -15,19 +15,19 @@
             --neon-blue: #00f0ff;
             --trade-green: #00e676;
             --trade-red: #ff1744;
+            --accent-purple: #9d4edd;
         }
 
         body {
             background-color: var(--bg-main);
             color: var(--text-primary);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0;
             padding: 20px;
             font-size: 13px;
             letter-spacing: 0.5px;
         }
 
-        /* 頂部華爾街高階狀態欄 */
         .terminal-header {
             display: flex;
             justify-content: space-between;
@@ -37,232 +37,78 @@
             margin-bottom: 20px;
         }
 
-        .terminal-logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
         .terminal-logo h1 {
-            margin: 0;
-            font-size: 18px;
-            font-weight: 800;
-            letter-spacing: 2px;
-            color: var(--text-primary);
+            margin: 0; font-size: 18px; font-weight: 800; letter-spacing: 2px;
         }
 
-        .terminal-logo h1 span {
-            color: var(--neon-blue);
-        }
+        .terminal-logo h1 span { color: var(--neon-blue); }
 
         .sys-status {
-            font-family: monospace;
-            font-size: 11px;
-            color: var(--trade-green);
-            background: rgba(0, 230, 118, 0.08);
-            padding: 4px 8px;
-            border: 1px solid rgba(0, 230, 118, 0.3);
-            border-radius: 2px;
+            font-family: monospace; font-size: 11px; color: var(--trade-green);
+            background: rgba(0, 230, 118, 0.08); padding: 4px 8px;
+            border: 1px solid rgba(0, 230, 118, 0.3); border-radius: 2px; margin-top: 5px;
         }
 
         .refresh-btn {
-            background: transparent;
-            color: var(--neon-blue);
-            border: 1px solid var(--neon-blue);
-            padding: 6px 16px;
-            font-family: monospace;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-transform: uppercase;
+            background: transparent; color: var(--neon-blue); border: 1px solid var(--neon-blue);
+            padding: 6px 16px; font-family: monospace; font-weight: bold; cursor: pointer;
         }
 
-        .refresh-btn:hover {
-            background: rgba(0, 240, 255, 0.1);
-            box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
-        }
+        .refresh-btn:hover { background: rgba(0, 240, 255, 0.1); }
 
-        /* 核心網格佈局 */
         .terminal-grid {
-            display: grid;
-            grid-template-columns: 1.6fr 1fr;
-            gap: 20px;
+            display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px;
         }
 
         .panel {
-            background-color: var(--bg-panel);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 18px;
+            background-color: var(--bg-panel); border: 1px solid var(--border-color);
+            border-radius: 4px; padding: 18px; display: flex; flex-direction: column;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            display: flex;
-            flex-direction: column;
         }
 
-        .panel-left {
-            grid-row: span 2;
-            min-height: 650px;
-        }
+        .panel-left { grid-row: span 3; min-height: 750px; }
 
         .panel-title {
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--neon-blue);
-            text-transform: uppercase;
-            margin-top: 0;
-            margin-bottom: 15px;
-            letter-spacing: 1.5px;
-            border-left: 3px solid var(--neon-blue);
-            padding-left: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            font-size: 12px; font-weight: 700; color: var(--neon-blue);
+            text-transform: uppercase; margin-top: 0; margin-bottom: 15px;
+            letter-spacing: 1.5px; border-left: 3px solid var(--neon-blue); padding-left: 8px;
+            display: flex; justify-content: space-between;
         }
 
-        .panel-title span {
-            font-size: 11px;
-            color: var(--text-muted);
-            font-family: monospace;
-        }
+        .panel-title span { font-size: 11px; color: var(--text-muted); font-family: monospace; }
 
-        /* 專業量化數據表格 */
-        .data-table-container {
-            overflow-x: auto;
-            flex-grow: 1;
-        }
+        table { width: 100%; border-collapse: collapse; font-family: monospace; }
+        th { color: var(--text-muted); font-size: 11px; padding: 10px 8px; border-bottom: 1px solid var(--border-color); text-transform: uppercase; }
+        td { padding: 12px 8px; border-bottom: 1px solid #141b2d; }
+        
+        .ticker-cell { color: var(--neon-blue); font-weight: bold; }
+        .score-cell { font-weight: bold; background: rgba(255,255,255,0.03); text-align: center; }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-family: "SF Mono", "JetBrains Mono", Menlo, monospace;
-            text-align: left;
-        }
-
-        th {
-            color: var(--text-muted);
-            font-size: 11px;
-            font-weight: 600;
-            padding: 10px 8px;
-            border-bottom: 1px solid var(--border-color);
-            text-transform: uppercase;
-        }
-
-        td {
-            padding: 12px 8px;
-            border-bottom: 1px solid #141b2d;
-            font-size: 13px;
-        }
-
-        tr:hover td {
-            background-color: rgba(255,255,255,0.02);
-        }
-
-        .ticker-cell {
-            color: var(--neon-blue);
-            font-weight: 700;
-        }
-
-        .score-cell {
-            font-weight: 700;
-            background: rgba(255,255,255,0.03);
-            text-align: center;
-            border-radius: 2px;
-        }
-
-        /* 檢索與控制項 */
-        .search-box {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
+        .search-box { display: flex; gap: 10px; margin-bottom: 15px; }
         input, select {
-            background-color: var(--bg-input);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-            padding: 8px 12px;
-            border-radius: 2px;
-            outline: none;
-            font-size: 12px;
-            font-family: monospace;
-            flex-grow: 1;
+            background-color: var(--bg-input); color: var(--text-primary);
+            border: 1px solid var(--border-color); padding: 8px 12px; font-family: monospace;
         }
 
-        input:focus {
-            border-color: var(--neon-blue);
+        /* 觀測艙樣式 */
+        .obs-display {
+            background: #050811; border: 1px dashed var(--accent-purple);
+            border-radius: 2px; padding: 15px; font-family: monospace; min-height: 90px;
         }
 
-        .action-btn {
-            background-color: var(--neon-blue);
-            color: var(--bg-main);
-            border: none;
-            padding: 4px 8px;
-            font-weight: bold;
-            font-size: 11px;
-            cursor: pointer;
-            text-transform: uppercase;
-            border-radius: 1px;
-        }
-
-        /* 供應鏈 / 觀察群組 */
-        .results-scroll {
-            height: 200px;
-            overflow-y: auto;
-            border: 1px solid #141b2d;
-            padding: 5px;
-        }
-
-        .list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px;
-            border-bottom: 1px solid #141b2d;
-            font-family: monospace;
-        }
-
-        .watchlist-container {
-            height: 280px;
-            overflow-y: auto;
-        }
-
-        .group-header {
-            background: #0e1527;
-            padding: 8px 12px;
-            margin-top: 10px;
-            margin-bottom: 5px;
-            border-left: 2px solid var(--neon-blue);
-            display: flex;
-            justify-content: space-between;
-            font-family: monospace;
-            font-weight: bold;
-        }
-
-        .del-btn {
-            background: transparent;
-            color: var(--trade-red);
-            border: 1px solid var(--trade-red);
-            cursor: pointer;
-            font-size: 10px;
-            padding: 1px 4px;
-        }
-
-        .del-btn:hover {
-            background: var(--trade-red);
-            color: white;
-        }
-
-        /* 滾動條美化 */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: var(--border-color); }
+        .results-scroll { height: 160px; overflow-y: auto; border: 1px solid #141b2d; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #141b2d; font-family: monospace; }
+        .watchlist-container { height: 200px; overflow-y: auto; }
+        .group-header { background: #0e1527; padding: 8px 12px; margin-top: 10px; border-left: 2px solid var(--neon-blue); display: flex; justify-content: space-between; font-family: monospace; font-weight: bold; }
+        .del-btn { background: transparent; color: var(--trade-red); border: 1px solid var(--trade-red); font-size: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="terminal-header">
     <div class="terminal-logo">
-        <h1>QUANTUM<span>//TERMINAL_US</span></h1>
-        <div class="sys-status">SYS_STATUS: OPERATIONAL // DATA_LINK: YAHOO_PRO</div>
+        <h1>QUANTUM<span>//TERMINAL_US_TOTAL</span></h1>
+        <div class="sys-status">SYS_STATUS: OPERATIONAL // MODE: 8000_FULL_MARKET_SCAN</div>
     </div>
     <div>
         <button class="refresh-btn" onclick="loadTerminalData()">⟳ REFRESH_STREAM</button>
@@ -272,220 +118,192 @@
 <div class="terminal-grid">
     
     <div class="panel panel-left">
-        <h3 class="panel-title">S&P 500 MOMENTUM VELOCITY MATRIX <span>SRC: top20_us.json</span></h3>
-        <div class="data-table-container">
+        <h3 class="panel-title">WALL STREET MOMENTUM VELOCITY MATRIX <span>top20_us.json</span></h3>
+        <div style="overflow-y:auto; flex-grow:1;">
             <table>
                 <thead>
                     <tr>
                         <th>Ticker</th>
                         <th>Security Name</th>
-                        <th>Last Price</th>
+                        <th>Price</th>
                         <th>10D Velocity</th>
                         <th style="text-align: center;">QUANT_SCORE</th>
                     </tr>
                 </thead>
-                <tbody id="usRadarBody">
-                    </tbody>
+                <tbody id="usRadarBody"></tbody>
             </table>
         </div>
     </div>
 
-    <div class="panel">
-        <h3 class="panel-title">Market Supply Index Explorer <span>SRC: S&P_COMPONENTS</span></h3>
+    <div class="panel" style="border: 1px solid var(--accent-purple);">
+        <h3 class="panel-title" style="color: var(--accent-purple); border-left-color: var(--accent-purple);">
+            ★ TOTAL US MARKET OBSERVATION WINDOW <span>all_calculated_us.json</span>
+        </h3>
         <div class="search-box">
-            <input type="text" id="usSearchInput" placeholder="ENTER TICKER OR COMPANY (e.g., NVDA)" onkeyup="searchUSStocks()">
+            <input type="text" id="obsSearchInput" placeholder="TYPE TICKER TO FILTER DROPDOWN..." onkeyup="filterObsDropdown()">
+            <select id="obsDropdown" onchange="inspectTargetStock()" style="max-width: 150px;">
+                <option value="">SELECT TICKER</option>
+            </select>
+        </div>
+        <div class="obs-display" id="obsDisplayGrid">
+            <div style="color: var(--text-muted); text-align: center; padding-top: 15px;">AWAITING SELECTION STREAM...</div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h3 class="panel-title">Market Supply Index Explorer <span>all_stocks.json</span></h3>
+        <div class="search-box">
+            <input type="text" id="usSearchInput" placeholder="SEARCH TICKER OR NAME..." onkeyup="searchUSStocks()">
             <select id="watchlistSelect"></select>
         </div>
-        <div id="usSearchResults" class="results-scroll">
-            <div style="color: var(--text-muted); text-align: center; padding: 20px; font-family: monospace;">AWAITING QUERY INPUT...</div>
-        </div>
+        <div id="usSearchResults" class="results-scroll"></div>
     </div>
 
     <div class="panel">
         <h3 class="panel-title">STRATEGIC WATCHLIST GROUPS <span>LOCAL_STORAGE</span></h3>
         <div class="search-box">
-            <input type="text" id="newGroupInput" placeholder="CREATE NEW STRATEGIC BLOCK...">
-            <button class="refresh-btn" style="padding: 0 12px; font-size: 11px;" onclick="createNewGroup()">+ ADD</button>
+            <input type="text" id="newGroupInput" placeholder="CREATE NEW POSITION BLOCK...">
+            <button class="refresh-btn" style="color:var(--text-primary); border-color:var(--border-color);" onclick="createNewGroup()">+ ADD</button>
         </div>
-        <div id="watchlistsWrapper" class="watchlist-container">
-            </div>
+        <div id="watchlistsWrapper" class="watchlist-container"></div>
     </div>
 
 </div>
 
 <script>
-    let allUSStocks = [];
-    let activeWatchlists = JSON.parse(localStorage.getItem('quantumUSWatchlists')) || { "CORE_SATELLITE": [] };
+    let allCalculatedStocks = []; // 存儲全美股已計算數據
+    let seedStockList = [];       // 存儲原始名冊
+    let activeWatchlists = JSON.parse(localStorage.getItem('quantumUSWatchlists')) || { "CORE_PORTFOLIO": [] };
 
-    // ==========================================
-    // 核心物流核心：獨立安全載入雙數據流
-    // ==========================================
     async function loadTerminalData() {
-        // 雷達載入動畫
-        document.getElementById('usRadarBody').innerHTML = "<tr><td colspan='5' style='text-align:center; color:var(--neon-blue); font-family:monospace;'>STREAMING VELOCITY DATA...</td></tr>";
+        document.getElementById('usRadarBody').innerHTML = "<tr><td colspan='5' style='text-align:center; color:var(--neon-blue);'>STREAMING WALL STREET HIGH-FREQUENCY PACKETS...</td></tr>";
 
-        // 任務一：讀取美股 20 檔強勢資料
+        // 1. 載入前 20 檔最強名單
         try {
-            const response = await fetch('./top20_us.json?t=' + new Date().getTime());
-            if (response.ok) {
-                const data = await response.json();
-                renderUSRadar(data);
-            } else {
-                document.getElementById('usRadarBody').innerHTML = "<tr><td colspan='5' style='text-align:center; color:var(--text-muted); padding:20px; font-family:monospace;'>[AWAITING CLOUD ACTION UPDATE] // NO DATA PACKET FOUND</td></tr>";
-            }
-        } catch (e) {
-            document.getElementById('usRadarBody').innerHTML = "<tr><td colspan='5' style='text-align:center; color:var(--trade-red); padding:20px; font-family:monospace;'>[LINK_FAILURE] UNABLE TO FETCH RADAR PACKET</td></tr>";
-        }
+            const res = await fetch('./top20_us.json?t=' + new Date().getTime());
+            if (res.ok) renderUSRadar(await res.json());
+        } catch (e) { printLeftError(); }
 
-        // 任務二：讀取全市場資料 (供檢索使用)
+        // 2. 載入全美股【已計算大數據庫】— 供觀測艙下拉選單使用
         try {
-            const responseAll = await fetch('./all_stocks.json?t=' + new Date().getTime());
-            if (responseAll.ok) {
-                allUSStocks = await responseAll.json();
-                document.getElementById('usSearchResults').innerHTML = "<div style='color: var(--text-muted); text-align:center; padding: 20px; font-family: monospace;'>DATABASE LOADED. READY FOR SCANNING.</div>";
-            } else {
-                allUSStocks = [];
-                document.getElementById('usSearchResults').innerHTML = "<div style='color: var(--text-muted); text-align:center; padding: 20px; font-family: monospace;'>[INFO] INDEX DATABASE NOT BUILT YET.</div>";
+            const resCalc = await fetch('./all_calculated_us.json?t=' + new Date().getTime());
+            if (resCalc.ok) {
+                allCalculatedStocks = await resCalc.json();
+                populateObsDropdown(allCalculatedStocks);
             }
-        } catch (e) {
-            allUSStocks = [];
-            document.getElementById('usSearchResults').innerHTML = "<div style='color: var(--trade-red); text-align:center; padding: 20px; font-family: monospace;'>[ERROR] INDEX PACKET CONNECT TERMINATED.</div>";
-        }
+        } catch (e) { console.log("觀測數據流未建立"); }
+
+        // 3. 載入原始 8000 檔名冊 — 供搜尋引擎使用
+        try {
+            const resAll = await fetch('./all_stocks.json?t=' + new Date().getTime());
+            if (resAll.ok) {
+                seedStockList = await resAll.json();
+                document.getElementById('usSearchResults').innerHTML = "<div style='color:var(--text-muted); text-align:center; padding:20px;'>MARKET DICTIONARY SECURED. RECOVERY OK.</div>";
+            }
+        } catch (e) { }
 
         renderWatchlists();
         updateSelectMenu();
     }
 
-    // 渲染雷達表格
-    function renderUSRadar(data) {
-        const tbody = document.getElementById('usRadarBody');
-        tbody.innerHTML = "";
-        
-        if (data.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; color:var(--trade-red); font-family:monospace;'>NO MOMENTUM SIGNALS ABOVE THRESHOLD.</td></tr>";
-            return;
-        }
-
-        data.forEach(r => {
-            const velocity = r['10D動能(%)'];
-            const colorClass = velocity >= 0 ? 'var(--trade-green)' : 'var(--trade-red)';
-            const sign = velocity > 0 ? '+' : '';
-            
-            tbody.innerHTML += `
-                <tr>
-                    <td class="ticker-cell">${r['代號']}</td>
-                    <td style="color: #c9d1d9;">${r['名稱']}</td>
-                    <td style="color: #ffffff; font-weight: bold;">$${r['現價'].toFixed(2)}</td>
-                    <td style="color: ${colorClass};">${sign}${velocity.toFixed(2)}%</td>
-                    <td class="score-cell" style="color: var(--neon-blue);">${r['妖股分數'].toFixed(1)}</td>
-                </tr>
-            `;
+    // 初始化與動態過濾下拉選單
+    function populateObsDropdown(data) {
+        const select = document.getElementById('obsDropdown');
+        select.innerHTML = '<option value="">SELECT TICKER</option>';
+        data.forEach(item => {
+            select.innerHTML += `<option value="${item['代號']}">${item['代號']}</option>`;
         });
     }
 
-    // 搜尋美股功能
+    function filterObsDropdown() {
+        const input = document.getElementById('obsSearchInput').value.trim().toUpperCase();
+        const select = document.getElementById('obsDropdown');
+        select.innerHTML = '<option value="">SELECT TICKER</option>';
+        
+        const filtered = allCalculatedStocks.filter(item => item['代號'].includes(input));
+        filtered.forEach(item => {
+            select.innerHTML += `<option value="${item['代號']}">${item['代號']}</option>`;
+        });
+    }
+
+    // 穿透觀測艙核心：選定代號立刻解鎖全面數據
+    function inspectTargetStock() {
+        const ticker = document.getElementById('obsDropdown').value;
+        const display = document.getElementById('obsDisplayGrid');
+        
+        if (!ticker) { display.innerHTML = "<div style='color:var(--text-muted); text-align:center; padding-top:15px;'>AWAITING SELECTION STREAM...</div>"; return; }
+        
+        const stock = allCalculatedStocks.find(item => item['代號'] === ticker);
+        const rank = allCalculatedStocks.findIndex(item => item['代號'] === ticker) + 1;
+
+        if (stock) {
+            display.innerHTML = `
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div><span style="color:var(--text-muted)">TICKER:</span> <b style="color:var(--neon-blue); font-size:16px;">${stock['代號']}</b></div>
+                    <div style="text-align:right;"><span style="color:var(--text-muted)">RANK:</span> <b style="color:var(--accent-purple)"># ${rank} / ${allCalculatedStocks.length}</b></div>
+                    <div colspan="2" style="grid-column: span 2; color:#c9d1d9; font-size:11px; text-overflow:ellipsis; white-space:nowrap; overflow:hidden;">${stock['名稱']}</div>
+                    <div><span style="color:var(--text-muted)">PRICE:</span> <b style="color:#fff">$${stock['現價'].toFixed(2)}</b></div>
+                    <div><span style="color:var(--text-muted)">10D_VEL:</span> <b style="color:${stock['10D動能(%)'] >= 0 ? 'var(--trade-green)' : 'var(--trade-red)'}">${stock['10D動能(%)'].toFixed(2)}%</b></div>
+                    <div style="grid-column: span 2; border-top:1px solid #1e2942; padding-top:5px; margin-top:5px;">
+                        <span style="color:var(--accent-purple); font-weight:bold;">QUANT_SCORE:</span> 
+                        <b style="color:var(--neon-blue); font-size:14px; float:right;">${stock['妖股分數'].toFixed(1)}</b>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    function renderUSRadar(data) {
+        const tbody = document.getElementById('usRadarBody'); tbody.innerHTML = "";
+        if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; color:var(--trade-red);'>NO MARKET SIGNALS OVER DETECTION LIMIT.</td></tr>"; return; }
+        data.forEach(r => {
+            tbody.innerHTML += `
+                <tr>
+                    <td class="ticker-cell">${r['代號']}</td>
+                    <td style="color:#c9d1d9; max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${r['名稱']}</td>
+                    <td style="color:#fff; font-weight:bold;">$${r['現價'].toFixed(2)}</td>
+                    <td style="color:${r['10D動能(%)'] >= 0 ? 'var(--trade-green)' : 'var(--trade-red)'}">${r['10D動能(%)'] >= 0 ? '+' : ''}${r['10D動能(%)'].toFixed(2)}%</td>
+                    <td class="score-cell" style="color:var(--neon-blue);">${r['妖股分數'].toFixed(1)}</td>
+                </tr>`;
+        });
+    }
+
     function searchUSStocks() {
         const input = document.getElementById('usSearchInput').value.trim().toUpperCase();
         const resultsDiv = document.getElementById('usSearchResults');
-        
         if (!input) { resultsDiv.innerHTML = ""; return; }
-        if (allUSStocks.length === 0) { resultsDiv.innerHTML = "<div style='color:var(--text-muted); padding:10px;'>LOADING DB...</div>"; return; }
-
-        // 支持代號與名稱過濾，最密集呈現 40 檔
-        const filtered = allUSStocks.filter(s => s.Code.toUpperCase().includes(input) || s.Name.toUpperCase().includes(input)).slice(0, 40);
-        
-        if (filtered.length === 0) { resultsDiv.innerHTML = "<div style='color:var(--trade-red); padding:10px; font-family:monospace;'>NO TARGET IDENTIFIED.</div>"; return; }
-
+        const filtered = seedStockList.filter(s => s.Code.includes(input) || s.Name.toUpperCase().includes(input)).slice(0, 30);
         resultsDiv.innerHTML = "";
         filtered.forEach(stock => {
             resultsDiv.innerHTML += `
                 <div class="list-item">
-                    <span><b style="color: var(--neon-blue)">${stock.Code}</b> - ${stock.Name.slice(0,25)}</span>
+                    <span><b style="color:var(--neon-blue)">${stock.Code}</b> - ${stock.Name.slice(0,30)}</span>
                     <button class="action-btn" onclick="addTickerToGroup('${stock.Code}', '${stock.Name.replace(/'/g, "\\'")}')">+ ALLOCATE</button>
-                </div>
-            `;
+                </div>`;
         });
     }
 
-    // 自訂觀察群組邏輯
     function createNewGroup() {
-        const name = document.getElementById('newGroupInput').value.trim().toUpperCase();
-        if (!name) return;
-        if (activeWatchlists[name]) { alert("BLOCK CODE ALREADY EXISTS."); return; }
-        activeWatchlists[name] = [];
-        saveAndRefresh();
-        document.getElementById('newGroupInput').value = "";
+        const name = document.getElementById('newGroupInput').value.trim().toUpperCase(); if (!name) return;
+        activeWatchlists[name] = []; saveAndRefresh(); document.getElementById('newGroupInput').value = "";
     }
-
     function addTickerToGroup(code, name) {
-        const targetGroup = document.getElementById('watchlistSelect').value;
-        if (!targetGroup) { alert("INITIALIZE A BLOCK GROUP FIRST."); return; }
-        
-        if (activeWatchlists[targetGroup].find(s => s.code === code)) {
-            alert("TICKER SECURED IN THIS BLOCK ALREADY.");
-            return;
-        }
-
-        activeWatchlists[targetGroup].push({ code: code, name: name });
-        saveAndRefresh();
+        const targetGroup = document.getElementById('watchlistSelect').value; if (!targetGroup) return;
+        if (!activeWatchlists[targetGroup].find(s => s.code === code)) { activeWatchlists[targetGroup].push({ code: code, name: name }); saveAndRefresh(); }
     }
-
-    function removeTickerFromGroup(groupName, code) {
-        activeWatchlists[groupName] = activeWatchlists[groupName].filter(s => s.code !== code);
-        saveAndRefresh();
-    }
-
-    function purgeGroup(groupName) {
-        if (confirm(`DECOMMISSION STRATEGIC BLOCK: [${groupName}]?`)) {
-            delete activeWatchlists[groupName];
-            saveAndRefresh();
-        }
-    }
-
-    function saveAndRefresh() {
-        localStorage.setItem('quantumUSWatchlists', JSON.stringify(activeWatchlists));
-        renderWatchlists();
-        updateSelectMenu();
-    }
-
-    function updateSelectMenu() {
-        const select = document.getElementById('watchlistSelect');
-        select.innerHTML = "";
-        for (let group in activeWatchlists) {
-            select.innerHTML += `<option value="${group}">${group}</option>`;
-        }
-    }
-
+    function removeTickerFromGroup(groupName, code) { activeWatchlists[groupName] = activeWatchlists[groupName].filter(s => s.code !== code); saveAndRefresh(); }
+    function purgeGroup(groupName) { if (confirm(`TERMINATE GROUP [${groupName}]?`)) { delete activeWatchlists[groupName]; saveAndRefresh(); } }
+    function saveAndRefresh() { localStorage.setItem('quantumUSWatchlists', JSON.stringify(activeWatchlists)); renderWatchlists(); updateSelectMenu(); }
+    function updateSelectMenu() { const select = document.getElementById('watchlistSelect'); select.innerHTML = ""; for (let group in activeWatchlists) select.innerHTML += `<option value="${group}">${group}</option>`; }
     function renderWatchlists() {
-        const wrapper = document.getElementById('watchlistsWrapper');
-        wrapper.innerHTML = "";
-        
+        const wrapper = document.getElementById('watchlistsWrapper'); wrapper.innerHTML = "";
         for (let group in activeWatchlists) {
-            let itemRows = "";
-            activeWatchlists[group].forEach(s => {
-                itemRows += `
-                    <div class="list-item" style="border-bottom: 1px dashed #141b2d;">
-                        <span><b style="color:var(--text-primary)">${s.code}</b> - ${s.name.slice(0,20)}</span>
-                        <button class="del-btn" onclick="removeTickerFromGroup('${group}', '${s.code}')">DROP</button>
-                    </div>
-                `;
-            });
-
-            wrapper.innerHTML += `
-                <div style="margin-bottom: 15px;">
-                    <div class="group-header">
-                        <span>// ${group} (${activeWatchlists[group].length})</span>
-                        <button class="del-btn" style="color:var(--trade-red);" onclick="purgeGroup('${group}')">TERMINATE</button>
-                    </div>
-                    ${itemRows || '<div style="color:var(--text-muted); font-size:11px; padding:8px; font-family:monospace;">EMPTY_BLOCK_POSITION</div>'}
-                </div>
-            `;
+            let rows = "";
+            activeWatchlists[group].forEach(s => { rows += `<div class="list-item"><span><b>${s.code}</b> - ${s.name.slice(0,25)}</span><button class="del-btn" onclick="removeTickerFromGroup('${group}','${s.code}')">DROP</button></div>`; });
+            wrapper.innerHTML += `<div style="margin-bottom:10px;"><div class="group-header"><span>// ${group} (${activeWatchlists[group].length})</span><button class="del-btn" onclick="purgeGroup('${group}')">PURGE</button></div>${rows}</div>`;
         }
     }
-
-    // 系統初始化開機
     loadTerminalData();
 </script>
-
 </body>
 </html>
