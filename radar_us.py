@@ -10,206 +10,51 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-print("🔥 QUANTUM CORE v2.1 // 華爾街全市場動能雷達（無敵面具版）啟動 🔥")
+print("🔥 QUANTUM CORE v3.1 // 華爾街全市場無限制掃描版 (解鎖 ETF) 🔥")
 
 # ==========================================
-# 🚀 階段一：戴上面具直連 NASDAQ Trader 撈取全美股名冊
+# 🚀 階段一：暴力無損解析，對接全美股名冊
 # ==========================================
-print("📋 [1/4] 正在偽裝安全身份，對接美國官方金融數據中心...")
-tickers = []
-all_stocks_json_data = []
+print("📋 [1/4] 正在同步全美股代號 (包含所有 ETF 與龍頭股)...")
+all_stocks_dict = {}
 
 try:
     nasdaq_url = "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt"
     other_url = "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt"
+    headers = {'User-Agent': 'Mozilla/5.0'}
     
-    # 🌟 核心修復：加上頂級真人瀏覽器 Header，徹底瓦解 NASDAQ 官方 403 阻擋
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    }
-    
-    print("   📥 正在安全押送 NASDAQ 上市列表...")
     res_nasdaq = requests.get(nasdaq_url, headers=headers, timeout=20)
-    
-    print("   📥 正在安全押送 Other Market 上市列表...")
     res_other = requests.get(other_url, headers=headers, timeout=20)
     
-    # 利用 io.StringIO 將文字串流無痛轉換為 Pandas Dataframe
-    df_nasdaq = pd.read_csv(io.StringIO(res_nasdaq.text), sep="|")
-    df_other = pd.read_csv(io.StringIO(res_other.text), sep="|")
+    # 🌟 關鍵修復：強制將空值補為字串，徹底防止 Pandas 誤殺資料！
+    df_nasdaq = pd.read_csv(io.StringIO(res_nasdaq.text), sep="|").fillna('')
+    df_other = pd.read_csv(io.StringIO(res_other.text), sep="|").fillna('')
     
-    # 數據清洗與過濾
+    # 擷取 NASDAQ 上市股票與 ETF
     for _, row in df_nasdaq.iterrows():
-        if 'Symbol' in row and 'Test Issue' in row:
-            symbol = str(row['Symbol']).strip()
-            name = str(row['Security Name']).strip()
-            if row['Test Issue'] == 'N' and len(symbol) <= 4 and symbol.isalpha():
-                tickers.append(symbol)
-                all_stocks_json_data.append({"Code": symbol, "Name": name})
-            
-    for _, row in df_other.iterrows():
-        if 'ACT Symbol' in row and 'Test Issue' in row:
-            symbol = str(row['ACT Symbol']).strip()
-            name = str(row['Security Name']).strip()
-            if row['Test Issue'] == 'N' and len(symbol) <= 4 and symbol.isalpha():
-                tickers.append(symbol)
-                all_stocks_json_data.append({"Code": symbol, "Name": name})
-
-    # 去除重複項
-    tickers = sorted(list(set(tickers)))
-    print(f"✅ 完美突破防線！成功鎖定全美股合計 {len(tickers)} 檔上市企業大數據庫！")
-    
-    # 寫入歷史名冊，供前端下拉選單即時檢索
-    with open("all_stocks.json", "w", encoding="utf-8") as f:
-        json.dump(all_stocks_json_data, f, ensure_ascii=False)
-
-except Exception as e:
-    print(f"❌ 嚴重錯誤：安全身份遭識破或網路中斷: {e}")
-    sys.exit(1)
-
-# ==========================================
-# 🚀 階段二：全美股高頻分批批次下載 (Bulk Download)
-# ==========================================
-print(f"📦 [2/4] 開始分批押送全美股實時行情...")
-results = []
-full_data = pd.DataFrame()
-
-# 將幾千檔美股切成每 400 檔一小批，在美國雲端機房用大水管高速下載
-batch_size = 400
-batches = [tickers[i:i + batch_size] for i in range(0, len(tickers), batch_size)]
-
-for idx, batch in enumerate(batches):
-    print(f"   🔄 正在強行加載第 {idx+1}/{len(batches)} 批次美股即時數據...")
-    try:
-        batch_data = yf.download(batch, period="1mo", group_by='ticker', progress=False, timeout=30)
-        if not batch_data.empty:
-            if full_data.empty:
-                full_data = batch_data
-            else:
-                full_data = pd.concat([full_data, batch_data], axis=1)
-        time.sleep(1) 
-    except Exception as e:
-        print(f"   ⚠️ 第 {idx+1} 批次遭遇亂流: {e}")
-
-# ==========================================
-# 🚀 階段三：全市場多維度量化動能特徵計算
-# ==========================================
-print("📊 [3/4] 正在對幾千檔美股進行強勢動能篩選與大數據精煉...")
-
-ticker_to_name = {s['Code']: s['Name'] for s in all_stocks_json_data}
-
-if not full_data.empty:
-    is_multi = isinstance(full_data.columns, pd.MultiIndex)
-    
-    for ticker in tickers:
-        name = ticker_to_name.get(ticker, "US Listed Stock")
+        symbol = str(row.get('Symbol', '')).strip()
+        name = str(row.get('Security Name', '')).strip()
+        test_issue = str(row.get('Test Issue', '')).strip()
         
-        try:
-            has_data = False
-            df_stock = pd.DataFrame()
+        # 只要不是測試股，且代號長度正常，通通抓進來！
+        if symbol and test_issue != 'Y' and len(symbol) <= 6:
+            sym_yf = symbol.replace('.', '-') # Yahoo 格式轉換
+            all_stocks_dict[sym_yf] = name
             
-            if is_multi:
-                if ticker in full_data.columns.levels[0]:
-                    df_stock = full_data[ticker].dropna(subset=['Close'])
-                    has_data = True
-            else:
-                if ticker in full_data.columns:
-                    df_stock = full_data[[ticker]].dropna()
-                    df_stock.columns = ['Close']
-                    has_data = True
-            
-            if has_data and len(df_stock) >= 15:
-                close_prices = df_stock['Close']
-                current_price = float(close_prices.iloc[-1])
-                prev10_price = float(close_prices.iloc[-11])
-                ma5 = float(df_stock['Close'].tail(5).mean())
-                
-                # 鐵血策略：未站上 5 日線直接無情淘汰
-                if current_price < ma5:
-                    continue
-                
-                roc10 = ((current_price - prev10_price) / prev10_price) * 100
-                bias = ((current_price - ma5) / ma5) * 100
-                score = (roc10 * 1.5) + (bias * 3.5)
-                
-                results.append({
-                    "代號": ticker, "名稱": name,
-                    "現價": round(current_price, 2), "10D動能(%)": round(roc10, 2),
-                    "MA5乖離(%)": round(bias, 2), "妖股分數": round(max(0, score), 2)
-                })
-        except Exception:
-            continue
-
-# ==========================================
-# 🚀 階段四：黃金 JSON 實體交割
-# ==========================================
-print("\n" + "="*60)
-if results:
-    final_df = pd.DataFrame(results)
-    final_df = final_df.sort_values(by="妖股分數", ascending=False).reset_index(drop=True)
-    
-    top20_us = final_df.head(20)
-    print("🏆 全美股大盤篩選完畢！最強前 20 檔極限動能榜單 🏆")
-    print(top20_us.to_string())
-    
-    top20_us.to_json("top20_us.json", orient="records", force_ascii=False)
-    final_df.to_json("all_calculated_us.json", orient="records", force_ascii=False)
-    print(f"\n💾 SUCCESS: 全球最強量化數據已成功押送回大廳！")
-else:
-    print("📉 當前美股進入全面盤整，無符合條件標的。")
-    with open("top20_us.json", "w", encoding="utf-8") as f: f.write("[]")
-    with open("all_calculated_us.json", "w", encoding="utf-8") as f: f.write("[]")
-print("="*60)
-import sys
-import os
-import io
-import requests
-import pandas as pd
-import yfinance as yf
-import json
-import time
-import warnings
-
-warnings.filterwarnings('ignore')
-
-print("🔥 QUANTUM CORE v2.2 // 華爾街全市場全量報價連動版啟動 🔥")
-
-# ==========================================
-# 🚀 階段一：安全對接美國官方金融數據中心
-# ==========================================
-print("📋 [1/4] 正在同步全美股代號...")
-tickers = []
-all_stocks_json_data = []
-
-try:
-    nasdaq_url = "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt"
-    other_url = "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt"
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-    
-    res_nasdaq = requests.get(nasdaq_url, headers=headers, timeout=20)
-    res_other = requests.get(other_url, headers=headers, timeout=20)
-    
-    df_nasdaq = pd.read_csv(io.StringIO(res_nasdaq.text), sep="|")
-    df_other = pd.read_csv(io.StringIO(res_other.text), sep="|")
-    
-    for _, row in df_nasdaq.iterrows():
-        if 'Symbol' in row and 'Test Issue' in row:
-            symbol = str(row['Symbol']).strip()
-            name = str(row['Security Name']).strip()
-            if row['Test Issue'] == 'N' and len(symbol) <= 4 and symbol.isalpha():
-                tickers.append(symbol)
-                all_stocks_json_data.append({"Code": symbol, "Name": name})
-            
+    # 擷取 NYSE/AMEX 上市股票與 ETF
     for _, row in df_other.iterrows():
-        if 'ACT Symbol' in row and 'Test Issue' in row:
-            symbol = str(row['ACT Symbol']).strip()
-            name = str(row['Security Name']).strip()
-            if row['Test Issue'] == 'N' and len(symbol) <= 4 and symbol.isalpha():
-                tickers.append(symbol)
-                all_stocks_json_data.append({"Code": symbol, "Name": name})
+        symbol = str(row.get('ACT Symbol', '')).strip()
+        name = str(row.get('Security Name', '')).strip()
+        test_issue = str(row.get('Test Issue', '')).strip()
+        
+        if symbol and test_issue != 'Y' and len(symbol) <= 6:
+            sym_yf = symbol.replace('.', '-')
+            all_stocks_dict[sym_yf] = name
 
-    tickers = sorted(list(set(tickers)))
-    print(f"✅ 成功鎖定全美股合計 {len(tickers)} 檔上市企業原始名冊。")
+    tickers = sorted(list(all_stocks_dict.keys()))
+    all_stocks_json_data = [{"Code": k, "Name": v} for k, v in all_stocks_dict.items()]
+
+    print(f"✅ 成功鎖定 {len(tickers)} 檔全美股大數據庫 (已解鎖 NVDA, AAPL 及所有 ETF)！")
     
     with open("all_stocks.json", "w", encoding="utf-8") as f:
         json.dump(all_stocks_json_data, f, ensure_ascii=False)
@@ -219,86 +64,83 @@ except Exception as e:
     sys.exit(1)
 
 # ==========================================
-# 🚀 階段二：高頻分批批次下載行情
+# 🚀 階段二：高頻分批下載 (徹底免疫錯位)
 # ==========================================
-print(f"📦 [2/4] 開始分批押送全美股實時行情...")
-full_data = pd.DataFrame()
+print(f"📦 [2/4] 開始極速分批下載實時行情...")
+all_closes = pd.DataFrame()
 
-batch_size = 400
+# 每次吞 300 檔，加速下載
+batch_size = 300
 batches = [tickers[i:i + batch_size] for i in range(0, len(tickers), batch_size)]
 
 for idx, batch in enumerate(batches):
-    print(f"   🔄 正在加載第 {idx+1}/{len(batches)} 批次美股即時數據...")
+    print(f"   🔄 正在加載第 {idx+1}/{len(batches)} 批次...")
     try:
-        batch_data = yf.download(batch, period="1mo", group_by='ticker', progress=False, timeout=30)
-        if not batch_data.empty:
-            if full_data.empty:
-                full_data = batch_data
+        # 直接指定抓取 15天 的 Close 收盤價
+        df_batch = yf.download(batch, period="15d", progress=False, timeout=20)
+        
+        if not df_batch.empty and 'Close' in df_batch:
+            close_data = df_batch['Close']
+            
+            # 如果這批剛好只有一檔成功，會回傳 Series，需轉為 DataFrame
+            if isinstance(close_data, pd.Series):
+                close_data = close_data.to_frame()
+                close_data.columns = [batch[0]]
+                
+            if all_closes.empty:
+                all_closes = close_data
             else:
-                full_data = pd.concat([full_data, batch_data], axis=1)
-        time.sleep(1) 
+                all_closes = pd.concat([all_closes, close_data], axis=1)
+                
     except Exception as e:
         print(f"   ⚠️ 第 {idx+1} 批次下載異常: {e}")
+    
+    time.sleep(0.5)
 
 # ==========================================
-# 🚀 階段三：資料流分離運算 (全量留存現價)
+# 🚀 階段三：全量報價庫與動能精煉
 # ==========================================
 print("📊 [3/4] 正在進行多維度量化特徵運算...")
 
-ticker_to_name = {s['Code']: s['Name'] for s in all_stocks_json_data}
-all_calculated_results = [] # 🌟 新增：全市場報價生還庫
-momentum_candidates = []    # 🌟 原有：強勢候選榜
+all_calculated_results = [] 
+momentum_candidates = []    
 
-if not full_data.empty:
-    is_multi = isinstance(full_data.columns, pd.MultiIndex)
-    
+if not all_closes.empty:
     for ticker in tickers:
-        name = ticker_to_name.get(ticker, "US Listed Stock")
-        
-        try:
-            has_data = False
-            df_stock = pd.DataFrame()
+        if ticker in all_closes.columns:
+            # 抽出該檔股票的收盤價歷史
+            df_stock = all_closes[ticker].dropna()
             
-            if is_multi:
-                if ticker in full_data.columns.levels[0]:
-                    df_stock = full_data[ticker].dropna(subset=['Close'])
-                    has_data = True
-            else:
-                if ticker in full_data.columns:
-                    df_stock = full_data[[ticker]].dropna()
-                    df_stock.columns = ['Close']
-                    has_data = True
+            # 防止重複代號產生的雙重欄位錯誤
+            if isinstance(df_stock, pd.DataFrame):
+                df_stock = df_stock.iloc[:, 0]
             
-            if has_data and len(df_stock) >= 15:
-                close_prices = df_stock['Close']
-                current_price = float(close_prices.iloc[-1])
-                prev10_price = float(close_prices.iloc[-11])
-                ma5 = float(df_stock['Close'].tail(5).mean())
+            if len(df_stock) >= 11:
+                current_price = float(df_stock.iloc[-1])
+                prev10_price = float(df_stock.iloc[-11])
+                ma5 = float(df_stock.tail(5).mean())
                 
                 roc10 = ((current_price - prev10_price) / prev10_price) * 100
                 bias = ((current_price - ma5) / ma5) * 100
                 score = (roc10 * 1.5) + (bias * 3.5)
                 
-                # 🌟 關鍵修正：只要有完整價格，通通塞進全量報價字典，絕不遺棄！
+                # 🌟 不論大盤 ETF 或個股，全部收錄進報價總庫！
                 stock_entry = {
-                    "代號": ticker, "名稱": name,
+                    "代號": ticker, "名稱": all_stocks_dict.get(ticker, ""),
                     "現價": round(current_price, 2), "10D動能(%)": round(roc10, 2),
                     "MA5乖離(%)": round(bias, 2), "妖股分數": round(max(0, score), 2)
                 }
                 all_calculated_results.append(stock_entry)
                 
-                # 鐵血策略只用在「前20名排行登榜過濾」，跌破5日線的股票不准登左邊的榜
+                # 只有站上5日線的股票，才有資格角逐左側的 Top 20 排行榜
                 if current_price >= ma5:
                     momentum_candidates.append(stock_entry)
-        except Exception:
-            continue
 
 # ==========================================
-# 🚀 階段四：雙彈頭 JSON 實體輸出
+# 🚀 階段四：黃金 JSON 實體輸出
 # ==========================================
 print("\n" + "="*60)
 
-# 輸出 1：強勢衝鋒前 20 名 (給左邊大儀表板)
 if momentum_candidates:
     df_momentum = pd.DataFrame(momentum_candidates)
     df_momentum = df_momentum.sort_values(by="妖股分數", ascending=False).reset_index(drop=True)
@@ -308,7 +150,6 @@ if momentum_candidates:
 else:
     with open("top20_us.json", "w", encoding="utf-8") as f: f.write("[]")
 
-# 輸出 2：全市場完整報價庫 (給右邊選單與自選群組，包含 NVDA 等所有股票)
 if all_calculated_results:
     df_all_calc = pd.DataFrame(all_calculated_results)
     df_all_calc = df_all_calc.sort_values(by="妖股分數", ascending=False).reset_index(drop=True)
