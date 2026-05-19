@@ -5,12 +5,12 @@ import requests
 import pandas as pd
 import yfinance as yf
 import json
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
 import warnings
 
 warnings.filterwarnings('ignore')
 
-print("🔥 QUANTUM CORE v5.0 // 華爾街純血企業・獨立狙擊版 🔥")
+print("🔥 QUANTUM CORE v6.0 // 華爾街靜默潛行版 (防禦 Yahoo 封鎖) 🔥")
 
 # ==========================================
 # 🚀 階段一：精準名冊解析 (剃除 ETF)
@@ -18,7 +18,7 @@ print("🔥 QUANTUM CORE v5.0 // 華爾街純血企業・獨立狙擊版 🔥")
 print("📋 [1/3] 正在同步全美股代號 (剔除 ETF，鎖定純血企業)...")
 all_stocks_dict = {}
 
-# 🌟 絕對護城河：不管納斯達克名單怎麼變，這幾尊大佛絕對不允許被漏掉
+# 🌟 絕對護城河：這些科技巨頭不管怎樣都必須在名單內！
 elite_vanguard = {
     "NVDA": "NVIDIA Corp", "AAPL": "Apple Inc.", "MSFT": "Microsoft", 
     "TSLA": "Tesla Inc", "PLTR": "Palantir Tech", "AMZN": "Amazon", 
@@ -36,7 +36,6 @@ try:
     res_nasdaq = requests.get(nasdaq_url, headers=headers, timeout=20)
     res_other = requests.get(other_url, headers=headers, timeout=20)
     
-    # 抓取 NASDAQ (剔除 ETF)
     if res_nasdaq.status_code == 200:
         df_nasdaq = pd.read_csv(io.StringIO(res_nasdaq.text), sep="|").fillna('')
         for _, row in df_nasdaq.iterrows():
@@ -44,11 +43,9 @@ try:
             name = str(row.get('Security Name', '')).strip()
             is_etf = str(row.get('ETF', 'N')).strip() == 'Y'
             test_issue = str(row.get('Test Issue', '')).strip()
-            
             if sym and test_issue != 'Y' and not is_etf and 1 <= len(sym) <= 5 and "File Creation" not in sym:
                 all_stocks_dict[sym.replace('.', '-')] = name
 
-    # 抓取 Other Market (剔除 ETF)
     if res_other.status_code == 200:
         df_other = pd.read_csv(io.StringIO(res_other.text), sep="|").fillna('')
         for _, row in df_other.iterrows():
@@ -56,7 +53,6 @@ try:
             name = str(row.get('Security Name', '')).strip()
             is_etf = str(row.get('ETF', 'N')).strip() == 'Y'
             test_issue = str(row.get('Test Issue', '')).strip()
-            
             if sym and test_issue != 'Y' and not is_etf and 1 <= len(sym) <= 5 and "File Creation" not in sym:
                 all_stocks_dict[sym.replace('.', '-')] = name
 
@@ -72,62 +68,88 @@ except Exception as e:
     tickers = sorted(list(all_stocks_dict.keys()))
 
 # ==========================================
-# 🚀 階段二與三：20 倍速獨立狙擊運算 (絕對免疫錯位 Bug)
+# 🚀 階段二：靜默小批次下載 (徹底迴避 Yahoo 反爬蟲封鎖)
 # ==========================================
-print(f"📦 [2/3] 啟動多執行緒獨立報價抓取 (預估耗時 2~3 分鐘)...")
+print(f"📦 [2/3] 啟動靜默小批次下載 (預估耗時 3~5 分鐘，請耐心等待)...")
+
+all_closes = pd.DataFrame()
+# 🌟 關鍵修復：每次只拿 80 檔，避免 URL 太長或觸發 DDoS 警報
+batch_size = 80 
+batches = [tickers[i:i + batch_size] for i in range(0, len(tickers), batch_size)]
+
+for idx, batch in enumerate(batches):
+    if idx % 5 == 0:
+        print(f"   🔄 正在加載第 {idx+1} 到 {min(idx+5, len(batches))} 批次...")
+    
+    try:
+        df_batch = yf.download(batch, period="15d", progress=False, timeout=15)
+        
+        if not df_batch.empty:
+            # 精準抽取 Close 欄位
+            if isinstance(df_batch.columns, pd.MultiIndex):
+                if 'Close' in df_batch.columns.levels[0]:
+                    close_data = df_batch['Close']
+                else:
+                    close_data = pd.DataFrame()
+            elif 'Close' in df_batch.columns:
+                close_data = df_batch[['Close']]
+                close_data.columns = [batch[0]] # 單檔股票防錯
+            else:
+                close_data = pd.DataFrame()
+
+            if not close_data.empty:
+                if all_closes.empty:
+                    all_closes = close_data
+                else:
+                    # 合併並去除可能重複的欄位
+                    all_closes = pd.concat([all_closes, close_data], axis=1)
+                    all_closes = all_closes.loc[:, ~all_closes.columns.duplicated()]
+                    
+    except Exception as e:
+        pass # 安靜跳過單一失敗的批次
+        
+    # 🌟 核心防禦：每批次強迫休息 1.5 秒，偽裝成人類網速
+    time.sleep(1.5)
+
+print(f"✅ 成功從 Yahoo 取回 {len(all_closes.columns)} 檔股票的有效報價！")
+
+# ==========================================
+# 🚀 階段三：全量報價庫與動能精煉
+# ==========================================
+print("📊 [3/3] 正在進行多維度量化特徵運算...")
 
 all_calculated_results = [] 
 momentum_candidates = []    
 
-# 定義單兵作戰任務：只管好自己這檔股票的死活
-def process_stock(ticker):
-    try:
-        stock = yf.Ticker(ticker)
-        df = stock.history(period="15d")
+if not all_closes.empty:
+    for ticker in all_closes.columns:
+        df_stock = all_closes[ticker].dropna()
         
-        if df.empty or len(df) < 11:
-            return None
+        if len(df_stock) >= 11:
+            current_price = float(df_stock.iloc[-1])
+            prev10_price = float(df_stock.iloc[-11])
+            ma5 = float(df_stock.tail(5).mean())
             
-        close_prices = df['Close']
-        current_price = float(close_prices.iloc[-1])
-        prev10_price = float(close_prices.iloc[-11])
-        ma5 = float(close_prices.tail(5).mean())
-        
-        roc10 = ((current_price - prev10_price) / prev10_price) * 100
-        bias = ((current_price - ma5) / ma5) * 100
-        score = (roc10 * 1.5) + (bias * 3.5)
-        
-        result_data = {
-            "代號": ticker, "名稱": all_stocks_dict.get(ticker, ""),
-            "現價": round(current_price, 2), "10D動能(%)": round(roc10, 2),
-            "MA5乖離(%)": round(bias, 2), "妖股分數": round(max(0, score), 2)
-        }
-        
-        return result_data, current_price >= ma5
-    except Exception:
-        return None
-
-# 放出 20 個機器人同時去抓，完全避免資料表合併錯誤！
-completed_count = 0
-with ThreadPoolExecutor(max_workers=20) as executor:
-    futures = {executor.submit(process_stock, ticker): ticker for ticker in tickers}
-    for future in as_completed(futures):
-        completed_count += 1
-        if completed_count % 500 == 0:
-            print(f"   🔄 進度回報: 已無損掃描 {completed_count} / {len(tickers)} 檔...")
+            roc10 = ((current_price - prev10_price) / prev10_price) * 100
+            bias = ((current_price - ma5) / ma5) * 100
+            score = (roc10 * 1.5) + (bias * 3.5)
             
-        res = future.result()
-        if res:
-            stock_data, is_strong = res
-            all_calculated_results.append(stock_data) # 不管強弱，全部留存報價庫！
-            if is_strong:
-                momentum_candidates.append(stock_data) # 站上5日線，晉級強勢榜！
+            stock_entry = {
+                "代號": ticker, "名稱": all_stocks_dict.get(ticker, "US Stock"),
+                "現價": round(current_price, 2), "10D動能(%)": round(roc10, 2),
+                "MA5乖離(%)": round(bias, 2), "妖股分數": round(max(0, score), 2)
+            }
+            # 🌟 無條件加入總報價庫
+            all_calculated_results.append(stock_entry)
+            
+            # 站上5日線才晉級強勢榜
+            if current_price >= ma5:
+                momentum_candidates.append(stock_entry)
 
 # ==========================================
 # 🚀 階段四：黃金 JSON 實體輸出
 # ==========================================
 print("\n" + "="*60)
-print(f"📊 結算：成功取得 {len(all_calculated_results)} 檔企業之有效報價。")
 
 if momentum_candidates:
     df_momentum = pd.DataFrame(momentum_candidates)
@@ -142,7 +164,7 @@ if all_calculated_results:
     df_all_calc = pd.DataFrame(all_calculated_results)
     df_all_calc = df_all_calc.sort_values(by="妖股分數", ascending=False).reset_index(drop=True)
     df_all_calc.to_json("all_calculated_us.json", orient="records", force_ascii=False)
-    print("💾 SUCCESS: 全量即時報價庫已就緒！")
+    print(f"💾 SUCCESS: 已成功生成 {len(all_calculated_results)} 檔美股的全量即時報價庫！")
 else:
     with open("all_calculated_us.json", "w", encoding="utf-8") as f: f.write("[]")
 
