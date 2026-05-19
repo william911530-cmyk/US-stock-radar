@@ -10,79 +10,85 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-print("🔥 QUANTUM CORE v3.1 // 華爾街全市場無限制掃描版 (解鎖 ETF) 🔥")
+print("🔥 QUANTUM CORE v4.0 // 華爾街終極裝甲版 (保證不漏大股與ETF) 🔥")
 
 # ==========================================
-# 🚀 階段一：暴力無損解析，對接全美股名冊
+# 🚀 階段一：無敵解析與菁英護城河
 # ==========================================
-print("📋 [1/4] 正在同步全美股代號 (包含所有 ETF 與龍頭股)...")
+print("📋 [1/4] 正在同步全市場清單...")
 all_stocks_dict = {}
+
+# 🌟 絕對護城河：強制寫入主流巨頭與熱門 ETF，就算美國官方伺服器當機也絕不漏掉！
+elite_vanguard = {
+    "NVDA": "NVIDIA Corp", "AAPL": "Apple Inc.", "MSFT": "Microsoft", 
+    "TSLA": "Tesla Inc", "PLTR": "Palantir Tech", "AMZN": "Amazon", 
+    "GOOGL": "Alphabet Inc", "META": "Meta Platforms", "AMD": "Advanced Micro Devices",
+    "TSM": "Taiwan Semiconductor", "AVGO": "Broadcom", "SMCI": "Super Micro Computer",
+    "SPY": "SPDR S&P 500 ETF", "QQQ": "Invesco QQQ Trust", "VOO": "Vanguard S&P 500 ETF",
+    "SMH": "VanEck Semiconductor ETF", "SOXX": "iShares Semiconductor ETF",
+    "TQQQ": "ProShares UltraPro QQQ", "UPRO": "ProShares UltraPro S&P500"
+}
+for k, v in elite_vanguard.items():
+    all_stocks_dict[k] = v
 
 try:
     nasdaq_url = "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt"
     other_url = "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt"
-    headers = {'User-Agent': 'Mozilla/5.0'}
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
     
     res_nasdaq = requests.get(nasdaq_url, headers=headers, timeout=20)
     res_other = requests.get(other_url, headers=headers, timeout=20)
     
-    # 🌟 關鍵修復：強制將空值補為字串，徹底防止 Pandas 誤殺資料！
-    df_nasdaq = pd.read_csv(io.StringIO(res_nasdaq.text), sep="|").fillna('')
-    df_other = pd.read_csv(io.StringIO(res_other.text), sep="|").fillna('')
-    
-    # 擷取 NASDAQ 上市股票與 ETF
-    for _, row in df_nasdaq.iterrows():
-        symbol = str(row.get('Symbol', '')).strip()
-        name = str(row.get('Security Name', '')).strip()
-        test_issue = str(row.get('Test Issue', '')).strip()
-        
-        # 只要不是測試股，且代號長度正常，通通抓進來！
-        if symbol and test_issue != 'Y' and len(symbol) <= 6:
-            sym_yf = symbol.replace('.', '-') # Yahoo 格式轉換
-            all_stocks_dict[sym_yf] = name
-            
-    # 擷取 NYSE/AMEX 上市股票與 ETF
-    for _, row in df_other.iterrows():
-        symbol = str(row.get('ACT Symbol', '')).strip()
-        name = str(row.get('Security Name', '')).strip()
-        test_issue = str(row.get('Test Issue', '')).strip()
-        
-        if symbol and test_issue != 'Y' and len(symbol) <= 6:
-            sym_yf = symbol.replace('.', '-')
-            all_stocks_dict[sym_yf] = name
+    # 🌟 關鍵修復：不再依賴欄位名稱 (防 BOM 亂碼)，直接用 iloc 鎖定絕對位置
+    if res_nasdaq.status_code == 200:
+        df_nasdaq = pd.read_csv(io.StringIO(res_nasdaq.text), sep="|")
+        for i in range(len(df_nasdaq)):
+            sym = str(df_nasdaq.iloc[i, 0]).strip()
+            name = str(df_nasdaq.iloc[i, 1]).strip()
+            # 長度正常且避開結尾的檔案時間註記
+            if 1 <= len(sym) <= 6 and "File Creation" not in sym:
+                sym_yf = sym.replace('.', '-')
+                all_stocks_dict[sym_yf] = name
+
+    if res_other.status_code == 200:
+        df_other = pd.read_csv(io.StringIO(res_other.text), sep="|")
+        for i in range(len(df_other)):
+            sym = str(df_other.iloc[i, 0]).strip()
+            name = str(df_other.iloc[i, 1]).strip()
+            if 1 <= len(sym) <= 6 and "File Creation" not in sym:
+                sym_yf = sym.replace('.', '-')
+                all_stocks_dict[sym_yf] = name
 
     tickers = sorted(list(all_stocks_dict.keys()))
     all_stocks_json_data = [{"Code": k, "Name": v} for k, v in all_stocks_dict.items()]
 
-    print(f"✅ 成功鎖定 {len(tickers)} 檔全美股大數據庫 (已解鎖 NVDA, AAPL 及所有 ETF)！")
+    print(f"✅ 成功鎖定 {len(tickers)} 檔全市場大數據庫 (已防護所有主流股與 ETF)！")
     
     with open("all_stocks.json", "w", encoding="utf-8") as f:
         json.dump(all_stocks_json_data, f, ensure_ascii=False)
 
 except Exception as e:
-    print(f"❌ 金融中心連線中斷: {e}")
-    sys.exit(1)
+    print(f"⚠️ 官方連線不穩，已啟動菁英護城河模式: {e}")
+    tickers = sorted(list(all_stocks_dict.keys()))
 
 # ==========================================
-# 🚀 階段二：高頻分批下載 (徹底免疫錯位)
+# 🚀 階段二：降載極速批次下載 (免疫錯位與丟包)
 # ==========================================
 print(f"📦 [2/4] 開始極速分批下載實時行情...")
 all_closes = pd.DataFrame()
 
-# 每次吞 300 檔，加速下載
-batch_size = 300
+# 🌟 關鍵修復：將批次縮小到 150，徹底防止 Yahoo URI 過長導致的「整批股票憑空消失」
+batch_size = 150
 batches = [tickers[i:i + batch_size] for i in range(0, len(tickers), batch_size)]
 
 for idx, batch in enumerate(batches):
     print(f"   🔄 正在加載第 {idx+1}/{len(batches)} 批次...")
     try:
-        # 直接指定抓取 15天 的 Close 收盤價
         df_batch = yf.download(batch, period="15d", progress=False, timeout=20)
         
         if not df_batch.empty and 'Close' in df_batch:
             close_data = df_batch['Close']
             
-            # 如果這批剛好只有一檔成功，會回傳 Series，需轉為 DataFrame
             if isinstance(close_data, pd.Series):
                 close_data = close_data.to_frame()
                 close_data.columns = [batch[0]]
@@ -108,10 +114,8 @@ momentum_candidates = []
 if not all_closes.empty:
     for ticker in tickers:
         if ticker in all_closes.columns:
-            # 抽出該檔股票的收盤價歷史
             df_stock = all_closes[ticker].dropna()
             
-            # 防止重複代號產生的雙重欄位錯誤
             if isinstance(df_stock, pd.DataFrame):
                 df_stock = df_stock.iloc[:, 0]
             
@@ -124,15 +128,13 @@ if not all_closes.empty:
                 bias = ((current_price - ma5) / ma5) * 100
                 score = (roc10 * 1.5) + (bias * 3.5)
                 
-                # 🌟 不論大盤 ETF 或個股，全部收錄進報價總庫！
                 stock_entry = {
-                    "代號": ticker, "名稱": all_stocks_dict.get(ticker, ""),
+                    "代號": ticker, "名稱": all_stocks_dict.get(ticker, "US Stock"),
                     "現價": round(current_price, 2), "10D動能(%)": round(roc10, 2),
                     "MA5乖離(%)": round(bias, 2), "妖股分數": round(max(0, score), 2)
                 }
                 all_calculated_results.append(stock_entry)
                 
-                # 只有站上5日線的股票，才有資格角逐左側的 Top 20 排行榜
                 if current_price >= ma5:
                     momentum_candidates.append(stock_entry)
 
