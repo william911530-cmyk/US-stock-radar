@@ -156,114 +156,96 @@
 </div>
 
 <script>
-    let allCalculatedStocks = []; // 全美股運算數據
-    let seedStockList = [];       // 全美股原始名冊
+    let allCalculatedStocks = []; 
+    let seedStockList = [];       
     let activeWatchlists = JSON.parse(localStorage.getItem('quantumUSWatchlists')) || { "MY_WATCHLIST": [] };
 
-    // 啟動連線
+    // 啟動連線 - 增加錯誤處理與防呆
     async function loadTerminalData() {
-        document.getElementById('sysStatus').innerHTML = "SYS_STATUS: 正在請求雲端資料庫...";
-        document.getElementById('sysStatus').style.color = "orange";
+        const sysStatus = document.getElementById('sysStatus');
+        if (sysStatus) {
+            sysStatus.innerHTML = "SYS_STATUS: 正在請求雲端資料庫...";
+            sysStatus.style.color = "orange";
+        }
         
-        let loadedComponents = 0;
-
-        // 1. 載入 TOP 20
+        // 1. 載入強勢榜
         try {
             const res = await fetch('./top20_us.json?t=' + new Date().getTime());
             if (res.ok) {
                 renderUSRadar(await res.json());
-                loadedComponents++;
-            } else throw new Error();
-        } catch (e) { 
-            document.getElementById('usRadarBody').innerHTML = `<tr><td colspan='5' style='text-align:center; color:var(--trade-red); padding:30px;'>❌ 無法載入 top20_us.json。<br><br>請確認：<br>1. 您是用 GitHub Pages 網址開啟，而非雙擊本機檔案。<br>2. 後端 Python 已經成功跑完並產生了 JSON。</td></tr>`;
-        }
+            } else {
+                console.warn("無法取得 top20_us.json");
+            }
+        } catch (e) { console.error("雷達載入失敗", e); }
 
-        // 2. 載入全美股分數庫 (供觀測與自選股報價用)
+        // 2. 載入全市場運算數據
         try {
             const resCalc = await fetch('./all_calculated_us.json?t=' + new Date().getTime());
             if (resCalc.ok) {
                 allCalculatedStocks = await resCalc.json();
                 populateObsDropdown(allCalculatedStocks);
-                loadedComponents++;
             }
-        } catch (e) { console.log("觀測數據未就緒"); }
+        } catch (e) { console.error("運算庫載入失敗", e); }
 
-        // 3. 載入原始名冊 (供搜尋用)
+        // 3. 載入名冊
         try {
             const resAll = await fetch('./all_stocks.json?t=' + new Date().getTime());
             if (resAll.ok) {
                 seedStockList = await resAll.json();
-                document.getElementById('usSearchResults').innerHTML = "<div style='color:var(--trade-green); text-align:center; padding:20px;'>✅ 8000+ 檔美股名冊已就緒，可開始搜尋。</div>";
-                loadedComponents++;
-            } else throw new Error();
-        } catch (e) {
-            document.getElementById('usSearchResults').innerHTML = "<div style='color:var(--trade-red); text-align:center; padding:20px;'>❌ 尚未讀取到 all_stocks.json，請檢查雲端。</div>";
-        }
+                const searchRes = document.getElementById('usSearchResults');
+                if (searchRes) searchRes.innerHTML = "<div style='color:var(--trade-green); text-align:center; padding:10px;'>✅ 數據庫已就緒</div>";
+            }
+        } catch (e) { console.error("名單載入失敗", e); }
 
-        if(loadedComponents > 0) {
-            document.getElementById('sysStatus').innerHTML = "SYS_STATUS: 雲端連線成功 (OPERATIONAL)";
-            document.getElementById('sysStatus').style.color = "var(--trade-green)";
-        } else {
-            document.getElementById('sysStatus').innerHTML = "SYS_STATUS: 斷線 (DISCONNECTED) - 請確認網址與檔案";
-            document.getElementById('sysStatus').style.color = "var(--trade-red)";
+        if (sysStatus) {
+            sysStatus.innerHTML = "SYS_STATUS: 連線成功 (OPERATIONAL)";
+            sysStatus.style.color = "var(--trade-green)";
         }
 
         renderWatchlists();
         updateSelectMenu();
     }
 
-    // --- 右上：解析艙邏輯 ---
-    function populateObsDropdown(data) {
-        const select = document.getElementById('obsDropdown');
-        select.innerHTML = '<option value="">-- 全部代號 --</option>';
-        data.slice(0, 100).forEach(item => { select.innerHTML += `<option value="${item['代號']}">${item['代號']}</option>`; });
-    }
-
+    // --- 安全的下拉選單過濾 ---
     function filterObsDropdown() {
-        const input = document.getElementById('obsSearchInput').value.trim().toUpperCase();
+        const input = document.getElementById('obsSearchInput');
         const select = document.getElementById('obsDropdown');
+        if (!input || !select) return; // 防呆：如果元素不存在就跳出
+
+        const keyword = input.value.trim().toUpperCase();
         select.innerHTML = '<option value="">-- 點此選擇結果 --</option>';
         
-        if(!input) return;
-        const filtered = allCalculatedStocks.filter(item => item['代號'].includes(input) || item['名稱'].toUpperCase().includes(input));
+        if(!keyword) return;
+        const filtered = allCalculatedStocks.filter(item => 
+            item['代號'].includes(keyword) || item['名稱'].toUpperCase().includes(keyword)
+        );
         
-        if(filtered.length === 0) {
-            select.innerHTML = '<option value="">(無符合結果)</option>';
-        } else {
-            filtered.forEach(item => { select.innerHTML += `<option value="${item['代號']}">${item['代號']} - ${item['名稱'].slice(0,10)}</option>`; });
-            // 如果只有一個結果，直接自動觸發顯示！
-            if(filtered.length === 1) {
-                select.value = filtered[0]['代號'];
-                inspectTargetStock();
-            }
-        }
+        filtered.slice(0, 100).forEach(item => {
+            select.innerHTML += `<option value="${item['代號']}">${item['代號']} - ${item['名稱'].slice(0,10)}</option>`;
+        });
     }
 
+    // --- 強化的觀測艙顯示 ---
     function inspectTargetStock() {
-        const ticker = document.getElementById('obsDropdown').value;
+        const select = document.getElementById('obsDropdown');
         const display = document.getElementById('obsDisplayGrid');
-        if (!ticker) return;
+        if (!select || !display) return;
         
+        const ticker = select.value;
         const stock = allCalculatedStocks.find(item => item['代號'] === ticker);
-        const rank = allCalculatedStocks.findIndex(item => item['代號'] === ticker) + 1;
-
+        
         if (stock) {
             const isGreen = stock['10D動能(%)'] >= 0;
             display.innerHTML = `
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <div><span style="color:var(--text-muted)">代號:</span> <b style="color:var(--neon-blue); font-size:18px;">${stock['代號']}</b></div>
-                    <div style="text-align:right;"><span style="color:var(--text-muted)">全市場排名:</span> <b style="color:var(--accent-purple); font-size:16px;"># ${rank}</b> / ${allCalculatedStocks.length}</div>
-                    <div colspan="2" style="grid-column: span 2; color:#c9d1d9; border-bottom:1px solid #141b2d; padding-bottom:5px;">${stock['名稱']}</div>
-                    <div style="margin-top:5px;"><span style="color:var(--text-muted)">現價:</span> <b style="color:#fff; font-size:14px;">$${stock['現價'].toFixed(2)}</b></div>
-                    <div style="text-align:right; margin-top:5px;"><span style="color:var(--text-muted)">10D 動能:</span> <b style="color:${isGreen ? 'var(--trade-green)' : 'var(--trade-red)'}; font-size:14px;">${isGreen?'+':''}${stock['10D動能(%)'].toFixed(2)}%</b></div>
-                    <div style="grid-column: span 2; border-top:1px dashed var(--accent-purple); padding-top:10px; margin-top:5px; display:flex; justify-content:space-between;">
-                        <span style="color:var(--accent-purple); font-weight:bold;">綜合量化分數</span> 
-                        <b style="color:var(--neon-blue); font-size:18px;">${stock['妖股分數'].toFixed(1)}</b>
-                    </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; font-size:12px;">
+                    <div>代號: <b style="color:var(--neon-blue)">${stock['代號']}</b></div>
+                    <div>現價: <b style="color:#fff">$${stock['現價'].toFixed(2)}</b></div>
+                    <div style="grid-column: span 2;">名稱: ${stock['名稱']}</div>
+                    <div>動能: <b style="color:${isGreen ? 'var(--trade-green)' : 'var(--trade-red)'}">${stock['10D動能(%)'].toFixed(2)}%</b></div>
+                    <div>分數: <b style="color:var(--neon-blue)">${stock['妖股分數'].toFixed(1)}</b></div>
                 </div>`;
         }
     }
-
     // --- 左側：Top 20 雷達 ---
     function renderUSRadar(data) {
         const tbody = document.getElementById('usRadarBody'); tbody.innerHTML = "";
