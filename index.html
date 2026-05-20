@@ -156,203 +156,130 @@
 </div>
 
 <script>
+    // 1. 初始化資料庫
     let allCalculatedStocks = []; 
     let seedStockList = [];       
     let activeWatchlists = JSON.parse(localStorage.getItem('quantumUSWatchlists')) || { "MY_WATCHLIST": [] };
 
-    // 啟動連線 - 增加錯誤處理與防呆
+    // 2. 核心載入邏輯
     async function loadTerminalData() {
         const sysStatus = document.getElementById('sysStatus');
-        if (sysStatus) {
-            sysStatus.innerHTML = "SYS_STATUS: 正在請求雲端資料庫...";
-            sysStatus.style.color = "orange";
-        }
-        
-        // 1. 載入強勢榜
-        try {
-            const res = await fetch('./top20_us.json?t=' + new Date().getTime());
-            if (res.ok) {
-                renderUSRadar(await res.json());
-            } else {
-                console.warn("無法取得 top20_us.json");
-            }
-        } catch (e) { console.error("雷達載入失敗", e); }
+        if (sysStatus) sysStatus.innerText = "SYS_STATUS: 載入資料中...";
 
-        // 2. 載入全市場運算數據
         try {
-            const resCalc = await fetch('./all_calculated_us.json?t=' + new Date().getTime());
+            // 同步載入這三個關鍵檔案
+            const [resCalc, resAll, resTop] = await Promise.all([
+                fetch('./all_calculated_us.json?t=' + new Date().getTime()),
+                fetch('./all_stocks.json?t=' + new Date().getTime()),
+                fetch('./top20_us.json?t=' + new Date().getTime())
+            ]);
+
             if (resCalc.ok) {
                 allCalculatedStocks = await resCalc.json();
                 populateObsDropdown(allCalculatedStocks);
             }
-        } catch (e) { console.error("運算庫載入失敗", e); }
+            if (resAll.ok) seedStockList = await resAll.json();
+            if (resTop.ok) renderUSRadar(await resTop.json());
 
-        // 3. 載入名冊
-        try {
-            const resAll = await fetch('./all_stocks.json?t=' + new Date().getTime());
-            if (resAll.ok) {
-                seedStockList = await resAll.json();
-                const searchRes = document.getElementById('usSearchResults');
-                if (searchRes) searchRes.innerHTML = "<div style='color:var(--trade-green); text-align:center; padding:10px;'>✅ 數據庫已就緒</div>";
-            }
-        } catch (e) { console.error("名單載入失敗", e); }
-
-        if (sysStatus) {
-            sysStatus.innerHTML = "SYS_STATUS: 連線成功 (OPERATIONAL)";
-            sysStatus.style.color = "var(--trade-green)";
+            renderWatchlists();
+            updateSelectMenu();
+            if (sysStatus) sysStatus.innerText = "SYS_STATUS: 連線成功 (OPERATIONAL)";
+        } catch (e) {
+            if (sysStatus) sysStatus.innerText = "SYS_STATUS: 資料讀取異常";
         }
-
-        renderWatchlists();
-        updateSelectMenu();
     }
 
-    // --- 安全的下拉選單過濾 ---
-    function filterObsDropdown() {
-        const input = document.getElementById('obsSearchInput');
+    // 3. 雷達渲染 (左側)
+    function renderUSRadar(data) {
+        const tbody = document.getElementById('usRadarBody');
+        if (!tbody) return;
+        tbody.innerHTML = data.map(r => `
+            <tr>
+                <td class="ticker-cell">${r['代號']}</td>
+                <td>${r['名稱']}</td>
+                <td>$${r['現價'].toFixed(2)}</td>
+                <td style="color:${r['10D動能(%)'] >= 0 ? 'var(--trade-green)' : 'var(--trade-red)'}">${r['10D動能(%)']}%</td>
+                <td class="score-cell">${r['妖股分數'].toFixed(1)}</td>
+            </tr>
+        `).join('');
+    }
+
+    // 4. 下拉選單 (右上)
+    function populateObsDropdown(data) {
         const select = document.getElementById('obsDropdown');
-        if (!input || !select) return; // 防呆：如果元素不存在就跳出
-
-        const keyword = input.value.trim().toUpperCase();
-        select.innerHTML = '<option value="">-- 點此選擇結果 --</option>';
-        
-        if(!keyword) return;
-        const filtered = allCalculatedStocks.filter(item => 
-            item['代號'].includes(keyword) || item['名稱'].toUpperCase().includes(keyword)
-        );
-        
-        filtered.slice(0, 100).forEach(item => {
-            select.innerHTML += `<option value="${item['代號']}">${item['代號']} - ${item['名稱'].slice(0,10)}</option>`;
-        });
+        if (!select) return;
+        // 為了避免卡頓，這裡只展示前 500 筆，完整的都在搜尋篩選裡
+        select.innerHTML = '<option value="">-- 請選擇代號 --</option>' + 
+            data.slice(0, 500).map(i => `<option value="${i['代號']}">${i['代號']} | ${i['名稱']}</option>`).join('');
     }
 
-    // --- 強化的觀測艙顯示 ---
     function inspectTargetStock() {
         const select = document.getElementById('obsDropdown');
         const display = document.getElementById('obsDisplayGrid');
         if (!select || !display) return;
         
-        const ticker = select.value;
-        const stock = allCalculatedStocks.find(item => item['代號'] === ticker);
-        
+        const stock = allCalculatedStocks.find(item => item['代號'] === select.value);
         if (stock) {
-            const isGreen = stock['10D動能(%)'] >= 0;
             display.innerHTML = `
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; font-size:12px;">
-                    <div>代號: <b style="color:var(--neon-blue)">${stock['代號']}</b></div>
-                    <div>現價: <b style="color:#fff">$${stock['現價'].toFixed(2)}</b></div>
-                    <div style="grid-column: span 2;">名稱: ${stock['名稱']}</div>
-                    <div>動能: <b style="color:${isGreen ? 'var(--trade-green)' : 'var(--trade-red)'}">${stock['10D動能(%)'].toFixed(2)}%</b></div>
-                    <div>分數: <b style="color:var(--neon-blue)">${stock['妖股分數'].toFixed(1)}</b></div>
-                </div>`;
+                <div>代號: <b>${stock['代號']}</b> | 現價: <b>$${stock['現價']}</b></div>
+                <div>動能: ${stock['10D動能(%)']}% | 分數: ${stock['妖股分數']}</div>`;
         }
     }
-    // --- 左側：Top 20 雷達 ---
-    function renderUSRadar(data) {
-        const tbody = document.getElementById('usRadarBody'); tbody.innerHTML = "";
-        if(data.length === 0) { tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; color:var(--trade-red); padding:20px;'>無股票符合強勢條件 (均跌破 5 日線)</td></tr>"; return; }
-        data.forEach(r => {
-            const isGreen = r['10D動能(%)'] >= 0;
-            tbody.innerHTML += `
-                <tr>
-                    <td class="ticker-cell">${r['代號']}</td>
-                    <td style="color:#c9d1d9; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${r['名稱']}</td>
-                    <td style="color:#fff;">$${r['現價'].toFixed(2)}</td>
-                    <td style="color:${isGreen ? 'var(--trade-green)' : 'var(--trade-red)'}">${isGreen ? '+' : ''}${r['10D動能(%)'].toFixed(2)}%</td>
-                    <td class="score-cell">${r['妖股分數'].toFixed(1)}</td>
-                </tr>`;
-        });
-    }
 
-    // --- 右中：市場搜尋 ---
+    // 5. 檢索與自選 (右中/右下)
     function searchUSStocks() {
-        const input = document.getElementById('usSearchInput').value.trim().toUpperCase();
+        const input = document.getElementById('usSearchInput').value.toUpperCase();
         const resultsDiv = document.getElementById('usSearchResults');
-        if (!input) { resultsDiv.innerHTML = "<div style='color:var(--text-muted); text-align:center; padding:10px;'>請輸入代號或名稱</div>"; return; }
+        if (!resultsDiv) return;
         
-        const filtered = seedStockList.filter(s => s.Code.includes(input) || s.Name.toUpperCase().includes(input)).slice(0, 30);
-        resultsDiv.innerHTML = "";
-        if(filtered.length === 0) { resultsDiv.innerHTML = "<div style='color:var(--trade-red); text-align:center; padding:10px;'>找不到相符的股票</div>"; return; }
-        
-        filtered.forEach(stock => {
-            resultsDiv.innerHTML += `
-                <div class="list-item">
-                    <span><b style="color:var(--neon-blue)">${stock.Code}</b> - ${stock.Name.slice(0,25)}</span>
-                    <button class="action-btn" onclick="addTickerToGroup('${stock.Code}', '${stock.Name.replace(/'/g, "\\'")}')">+ 加入群組</button>
-                </div>`;
-        });
+        const filtered = seedStockList.filter(s => s.Code.includes(input) || s.Name.toUpperCase().includes(input)).slice(0, 20);
+        resultsDiv.innerHTML = filtered.map(s => `
+            <div class="list-item">
+                <span><b>${s.Code}</b> - ${s.Name.substring(0, 15)}</span>
+                <button class="action-btn" onclick="addTickerToGroup('${s.Code}', '${s.Name.replace(/'/g, "\\'")}')">+ 加入</button>
+            </div>
+        `).join('');
     }
 
-    // --- 右下：自選群組與即時報價邏輯 ---
-    function createNewGroup() {
-        const name = document.getElementById('newGroupInput').value.trim().toUpperCase(); if (!name) return;
-        if(activeWatchlists[name]) { alert("此群組名稱已存在！"); return; }
-        activeWatchlists[name] = []; saveAndRefresh(); document.getElementById('newGroupInput').value = "";
-    }
-    
     function addTickerToGroup(code, name) {
-        const targetGroup = document.getElementById('watchlistSelect').value; 
-        if (!targetGroup) { alert("請先建立並選擇一個群組！"); return; }
-        if (!activeWatchlists[targetGroup].find(s => s.code === code)) { 
-            activeWatchlists[targetGroup].push({ code: code, name: name }); 
-            saveAndRefresh(); 
-        } else { alert("此股票已經在該群組中了！"); }
-    }
-    
-    function removeTickerFromGroup(groupName, code) { activeWatchlists[groupName] = activeWatchlists[groupName].filter(s => s.code !== code); saveAndRefresh(); }
-    function purgeGroup(groupName) { if (confirm(`確定要刪除整個群組 [${groupName}] 嗎？`)) { delete activeWatchlists[groupName]; saveAndRefresh(); } }
-    function saveAndRefresh() { localStorage.setItem('quantumUSWatchlists', JSON.stringify(activeWatchlists)); renderWatchlists(); updateSelectMenu(); }
-    
-    function updateSelectMenu() { 
-        const select = document.getElementById('watchlistSelect'); 
-        select.innerHTML = ""; 
-        for (let group in activeWatchlists) { select.innerHTML += `<option value="${group}">${group}</option>`; } 
-    }
-    
-    function renderWatchlists() {
-        const wrapper = document.getElementById('watchlistsWrapper'); wrapper.innerHTML = "";
-        
-        for (let group in activeWatchlists) {
-            let rows = "";
-            activeWatchlists[group].forEach(s => { 
-                // ✨ 核心升級：去 allCalculatedStocks 裡面把現價跟分數撈出來！
-                let priceHtml = `<span style="color:var(--text-muted); font-size:11px;">(無報價)</span>`;
-                const liveData = allCalculatedStocks.find(x => x['代號'] === s.code);
-                
-                if (liveData) {
-                    const isGreen = liveData['10D動能(%)'] >= 0;
-                    priceHtml = `
-                        <div style="text-align:right; font-size:12px;">
-                            <div style="color:#fff;">$${liveData['現價'].toFixed(2)}</div>
-                            <div style="color:${isGreen ? 'var(--trade-green)' : 'var(--trade-red)'}; font-size:11px;">${isGreen?'+':''}${liveData['10D動能(%)'].toFixed(1)}%</div>
-                        </div>
-                    `;
-                }
-
-                rows += `
-                    <div class="list-item" style="padding: 6px 8px;">
-                        <div style="display:flex; flex-direction:column;">
-                            <b style="color:var(--neon-blue); font-size:14px;">${s.code}</b>
-                            <span style="color:var(--text-muted); font-size:10px;">${s.name.slice(0,15)}</span>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:15px;">
-                            ${priceHtml}
-                            <button class="del-btn" onclick="removeTickerFromGroup('${group}','${s.code}')">刪除</button>
-                        </div>
-                    </div>`; 
-            });
-            
-            wrapper.innerHTML += `
-                <div style="margin-bottom:15px; background: rgba(0,0,0,0.3); border-radius: 4px; padding-bottom:5px;">
-                    <div class="group-header">
-                        <span style="color:#fff;">📂 ${group} (${activeWatchlists[group].length} 檔)</span>
-                        <button class="del-btn" onclick="purgeGroup('${group}')">刪除群組</button>
-                    </div>
-                    ${rows || '<div style="color:var(--text-muted); text-align:center; padding:15px; font-size:11px;">(群組尚無股票)</div>'}
-                </div>`;
+        const groupName = document.getElementById('watchlistSelect').value || "MY_WATCHLIST";
+        if (!activeWatchlists[groupName]) activeWatchlists[groupName] = [];
+        if (!activeWatchlists[groupName].find(s => s.code === code)) {
+            activeWatchlists[groupName].push({ code, name });
+            localStorage.setItem('quantumUSWatchlists', JSON.stringify(activeWatchlists));
+            renderWatchlists();
         }
     }
 
-    // 啟動！
+    function renderWatchlists() {
+        const wrapper = document.getElementById('watchlistsWrapper');
+        if (!wrapper) return;
+        wrapper.innerHTML = Object.keys(activeWatchlists).map(group => `
+            <div class="group-header">📂 ${group}</div>
+            ${activeWatchlists[group].map(s => {
+                const live = allCalculatedStocks.find(x => x['代號'] === s.code);
+                return `<div class="list-item"><span>${s.code}</span><span>${live ? '$'+live['現價'] : '無報價'}</span></div>`;
+            }).join('')}
+        `).join('');
+    }
+
+    function updateSelectMenu() {
+        const s = document.getElementById('watchlistSelect');
+        if (s) s.innerHTML = Object.keys(activeWatchlists).map(g => `<option value="${g}">${g}</option>`).join('');
+    }
+
+    function createNewGroup() {
+        const name = document.getElementById('newGroupInput').value.trim().toUpperCase();
+        if (name && !activeWatchlists[name]) {
+            activeWatchlists[name] = [];
+            localStorage.setItem('quantumUSWatchlists', JSON.stringify(activeWatchlists));
+            renderWatchlists();
+            updateSelectMenu();
+        }
+    }
+
+    function purgeGroup(name) { delete activeWatchlists[name]; localStorage.setItem('quantumUSWatchlists', JSON.stringify(activeWatchlists)); renderWatchlists(); updateSelectMenu(); }
+
     loadTerminalData();
 </script>
 </body>
