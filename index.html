@@ -198,7 +198,7 @@
             if (resAll.ok) {
                 seedStockList = await resAll.json();
                 const searchRes = document.getElementById('usSearchResults');
-                if (searchRes) searchRes.innerHTML = "<div style='color:var(--trade-green); text-align:center; padding:20px;'>✅ 8000+ 檔美股名冊已就緒，可開始搜尋。</div>";
+                if (searchRes) searchRes.innerHTML = "<div style='color:var(--trade-green); text-align:center; padding:20px;'>✅ 4000+ 檔美股名冊已就緒，可開始搜尋。</div>";
                 loadedComponents++;
             }
         } catch (e) { console.error("名單載入失敗"); }
